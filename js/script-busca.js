@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearHistoryBtn = document.getElementById('clearHistoryBtn'); // Selector for clear button
     const loadingBar = document.getElementById('loadingBar'); // Loading bar container
     const loadingBarProgress = document.getElementById('loadingBarProgress'); // Loading bar inner progress
+    const semResultadoText = document.getElementById('semResultadoText'); // Selector for the text element
 
     let blurTimeout = null; // Timeout handle for blur event
     let isClickingRecent = false; // Flag to track clicks on recent items
@@ -71,14 +72,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- API Simulation -> Real API Call ---
     async function performSearch(query) {
         console.log("Performing search for:", query);
-        showSection(null); // Hide all sections initially
-        let sectionToShowAfterLoad = null; // Variable to store which section to show
+        showSection(null);
+        let sectionToShowAfterLoad = null;
+        let timeoutOccurred = false; // Flag to track timeout
 
-        // Show and start loading bar animation
+        // Reset timeout message text
+        if (semResultadoText) {
+             semResultadoText.innerHTML = "Nenhum resultado encontrado.<br>Tente alterar as palavras e busque<br>novamente.";
+        }
+
+        // Start loading bar
         if (loadingBar && loadingBarProgress) {
-            loadingBar.style.opacity = '1'; // Ensure opacity is 1 before showing
+            loadingBar.style.opacity = '1';
             loadingBar.style.display = 'block';
-            loadingBarProgress.style.width = '0%'; // Ensure it starts at 0
+            loadingBarProgress.style.width = '0%';
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                      loadingBarProgress.style.width = '100%';
@@ -86,16 +93,25 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        const apiUrl = `https://recomendo-python.staging.reidopitaco.io/search/betting`; // Base URL for POST
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ query: query }),
-            });
+        const apiUrl = `https://recomendo-python.staging.reidopitaco.io/search/betting`;
+        const fetchPromise = fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: query }),
+        });
 
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API Timeout')), 5000); // 5 seconds timeout
+        });
+
+        try {
+            // Race the fetch against the timeout
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+            // If fetch won, process the response
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -106,46 +122,51 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Data to render:", resultsArray);
 
             if (Array.isArray(resultsArray) && resultsArray.length > 0) {
-                renderResults(resultsArray); // Prepare the results but don't show yet
-                sectionToShowAfterLoad = 'contentResultados'; // Mark section to show later
+                renderResults(resultsArray);
+                sectionToShowAfterLoad = 'contentResultados';
                 if (campeonatoListagemContainer) {
                     campeonatoListagemContainer.dataset.currentQuery = query; 
                 }
             } else {
                 console.log("API returned no results or unexpected format.");
-                sectionToShowAfterLoad = 'contentSemResultado'; // Mark section to show later
+                sectionToShowAfterLoad = 'contentSemResultado';
             }
         } catch (error) {
-            console.error("Erro ao buscar na API:", error);
-            sectionToShowAfterLoad = 'contentSemResultado'; // Mark section on error too
+            console.error("Erro na busca ou timeout:", error);
+            if (error.message === 'API Timeout') {
+                 console.log("API request timed out after 5 seconds.");
+                timeoutOccurred = true; // Set flag
+                if (semResultadoText) { // Update text for timeout
+                    semResultadoText.innerHTML = "A busca demorou mais do que o esperado.<br>Tente mudar os termos ou buscar novamente.";
+                }
+            } else {
+                // Handle other errors (network, parsing, etc.)
+                if (semResultadoText) { // Keep default error text for other errors
+                     semResultadoText.innerHTML = "Nenhum resultado encontrado.<br>Tente alterar as palavras e busque<br>novamente.";
+                }
+            }
+             sectionToShowAfterLoad = 'contentSemResultado'; // Show 'no results' section for timeout/errors
         }
         finally {
-             // Ensure loading bar animation completes visually before hiding
+            // Handle loading bar hiding (logic remains the same)
             if (loadingBar && loadingBarProgress) {
-                const widthAnimationDuration = 800; // From CSS transition
-                const fadeOutAnimationDuration = 300; // From CSS transition
-
-                // Wait for the width animation to finish
-                setTimeout(() => {
-                    loadingBar.style.opacity = '0'; // Start fade-out
-                    
-                    // Wait for fade-out transition to finish
-                    setTimeout(() => {
-                        loadingBar.style.display = 'none'; // Hide completely
-                        loadingBarProgress.style.width = '0%'; // Reset for next time
-                        // Now show the appropriate content section
-                        if (sectionToShowAfterLoad) {
-                            showSection(sectionToShowAfterLoad);
-                        }
-                    }, fadeOutAnimationDuration);
-                }, widthAnimationDuration);
-            }
-            else {
-                // Fallback if loading bar elements not found - show section immediately
+                 const widthAnimationDuration = 800;
+                 const fadeOutAnimationDuration = 300;
+                 setTimeout(() => {
+                     loadingBar.style.opacity = '0';
+                     setTimeout(() => {
+                         loadingBar.style.display = 'none';
+                         loadingBarProgress.style.width = '0%';
+                         if (sectionToShowAfterLoad) {
+                             showSection(sectionToShowAfterLoad);
+                         }
+                     }, fadeOutAnimationDuration);
+                 }, widthAnimationDuration);
+             } else {
                  if (sectionToShowAfterLoad) {
                         showSection(sectionToShowAfterLoad);
                  }
-            }
+             }
         }
     }
 
