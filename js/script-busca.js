@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let blurTimeout = null; // Timeout handle for blur event
     let currentFetchController = null; // Controller for the current fetch request
+    let isClickingRecent = false; // Flag to track clicks on recent items
 
     // --- LocalStorage Constants ---
     const MAX_HISTORY = 10;
