@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Assuming the data is an array of results as per your example -> Adjusted based on actual response
             const resultsArray = data?.data?.results; // Access results inside data.data
+            console.log("Data to render:", resultsArray); // Log 1: Check data before passing
 
             if (Array.isArray(resultsArray) && resultsArray.length > 0) {
                 renderResults(resultsArray); // Pass the correct array
@@ -136,10 +137,21 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error("Missing elements for rendering results");
             return;
         }
+        console.log("renderResults: Starting. Container found:", !!campeonatoListagemContainer); // Log 2a: Check container
+        console.log("renderResults: Templates found:", { base: !!templateBaseCampeonato, event: !!templateEventoPreMatch }); // Log 2b: Check templates
         campeonatoListagemContainer.innerHTML = ''; // Clear previous results
 
+        // Filter results to only include matches before grouping
+        const matchResults = results.filter(result => result.type === 'match');
+
+        if (matchResults.length === 0) {
+            console.log("No match results found after filtering.");
+            showSection('contentSemResultado'); // Show no results if only non-match items were returned
+            return;
+        }
+
         // Group results by tournament_name
-        const groupedResults = results.reduce((acc, result) => {
+        const groupedResults = matchResults.reduce((acc, result) => {
             const key = result.tournament_name || 'Outros Campeonatos'; // Group items without name
             if (!acc[key]) {
                 acc[key] = [];
@@ -147,12 +159,14 @@ document.addEventListener('DOMContentLoaded', function() {
             acc[key].push(result);
             return acc;
         }, {});
+        console.log("renderResults: Grouped results:", groupedResults); // Log 3: Check grouping
 
         const tournamentNames = Object.keys(groupedResults);
 
         // Iterate through each group (tournament)
         tournamentNames.forEach((tournamentName, tIndex) => {
             const tournamentMatches = groupedResults[tournamentName];
+            console.log(`renderResults: Processing tournament ${tIndex + 1}: ${tournamentName}`, tournamentMatches); // Log 4a: Check tournament loop
 
             // Clone the base campeonato template
             const campeonatoNode = templateBaseCampeonato.content.cloneNode(true);
@@ -164,26 +178,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Add matches to this tournament block
             tournamentMatches.forEach((match, mIndex) => {
+                 console.log(`  renderResults: Processing match ${mIndex + 1}:`, match); // Log 4b: Check match loop
                  // For now, only render pre-match events
-                if (match.status === 'not_started' && match.type === 'match') {
+                 const isPreMatch = match.status === 'not_started' && match.type === 'match';
+                 console.log(`  renderResults: Is pre-match? ${isPreMatch} (Status: ${match.status}, Type: ${match.type})`); // Log 5: Check filter condition
+
+                if (isPreMatch) {
                      // Clone the event template
-                    const eventoNode = templateEventoPreMatch.content.cloneNode(true);
-                    const eventoDiv = eventoNode.querySelector('.eventoprematch');
+                     const eventoNode = templateEventoPreMatch.content.cloneNode(true);
+                     const eventoDiv = eventoNode.querySelector('.eventoprematch');
 
-                    // Populate event data
-                    const timeAElement = eventoDiv.querySelector('.txttime.timea');
-                    const timeBElement = eventoDiv.querySelector('.txttime.timeb');
-                    const dataElement = eventoDiv.querySelector('.txtdatapartida');
+                     // Populate event data
+                     const timeAElement = eventoDiv.querySelector('.txttime.timea');
+                     const timeBElement = eventoDiv.querySelector('.txttime.timeb');
+                     const dataElement = eventoDiv.querySelector('.txtdatapartida');
 
-                    if(timeAElement) timeAElement.textContent = match.home_team_name || 'Time A';
-                    if(timeBElement) timeBElement.textContent = match.away_team_name || 'Time B';
-                    if(dataElement) dataElement.textContent = formatMatchDate(match.match_date);
+                     if(timeAElement) timeAElement.textContent = match.home_team_name || 'Time A';
+                     if(timeBElement) timeBElement.textContent = match.away_team_name || 'Time B';
+                     if(dataElement) dataElement.textContent = formatMatchDate(match.match_date);
 
-                    // Add 'ultimo' class to the last event *within this tournament*
-                    if (mIndex === tournamentMatches.filter(m => m.status === 'not_started' && m.type === 'match').length - 1) {
-                         eventoDiv.classList.add('ultimo');
-                    }
+                     // Add 'ultimo' class to the last event *within this tournament*
+                     if (mIndex === tournamentMatches.filter(m => m.status === 'not_started' && m.type === 'match').length - 1) {
+                          eventoDiv.classList.add('ultimo');
+                     }
 
+                    console.log("    renderResults: Appending event node to baseCampeonatoDiv"); // Log 6a: Check event append
                     baseCampeonatoDiv.appendChild(eventoNode);
                 }
                 // TODO: Handle 'eventoaovivo' when API supports it
@@ -195,6 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Append the populated tournament block to the main container
+            console.log(`renderResults: Appending tournament block ${tIndex + 1} to container`); // Log 6b: Check tournament append
             campeonatoListagemContainer.appendChild(campeonatoNode);
         });
     }
@@ -377,6 +397,31 @@ document.addEventListener('DOMContentLoaded', function() {
                  isClickingRecent = false;
                  blurTimeout = null; // Clear timeout handle
             }, 150); // Adjust delay if needed
+        });
+
+        // Handle clicks on "Mais Buscados" links
+        const maisBuscadosLinks = document.querySelectorAll('.linkbuscados');
+        maisBuscadosLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent default link navigation
+
+                const textElement = link.querySelector('.txttimemaisbuscados');
+                if (textElement) {
+                    const searchTerm = textElement.textContent.trim();
+                    if (searchTerm) {
+                        console.log("Clicked Mais Buscados:", searchTerm);
+                        inputBusca.value = searchTerm;
+                        // Trigger input event to update UI (like clear button)
+                        inputBusca.dispatchEvent(new Event('input', { bubbles: true }));
+                        // Scroll to top smoothly
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        // Perform the search immediately
+                        performSearch(searchTerm);
+                        // Optionally add to history here in the future
+                        // addSearchTerm(searchTerm);
+                    }
+                }
+            });
         });
 
     } else {
