@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  console.log("API request timed out after 5 seconds.");
                 timeoutOccurred = true; // Set flag
                 if (semResultadoText) { // Update text for timeout
-                    semResultadoText.innerHTML = "A busca demorou mais do que o esperado.<br>Tente mudar os termos ou buscar novamente.";
+                    semResultadoText.innerHTML = "A busca demorou mais do que o<br>esperado.Tente mudar os termos<br>ou buscar novamente.";
                 }
             } else {
                 // Handle other errors (network, parsing, etc.)
