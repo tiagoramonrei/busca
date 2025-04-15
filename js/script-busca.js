@@ -120,18 +120,25 @@ document.addEventListener('DOMContentLoaded', function() {
             sectionToShowAfterLoad = 'contentSemResultado'; // Mark section on error too
         }
         finally {
-             // Start hiding loading bar (fade-out)
+             // Ensure loading bar animation completes visually before hiding
             if (loadingBar && loadingBarProgress) {
-                loadingBar.style.opacity = '0'; // Start fade-out
-                // Wait for fade-out transition to finish before hiding and showing content
+                const widthAnimationDuration = 800; // From CSS transition
+                const fadeOutAnimationDuration = 300; // From CSS transition
+
+                // Wait for the width animation to finish
                 setTimeout(() => {
-                    loadingBar.style.display = 'none'; // Hide completely
-                    loadingBarProgress.style.width = '0%'; // Reset for next time
-                    // Now show the appropriate content section
-                    if (sectionToShowAfterLoad) {
-                        showSection(sectionToShowAfterLoad);
-                    }
-                }, 300); // Must match the CSS opacity transition duration
+                    loadingBar.style.opacity = '0'; // Start fade-out
+                    
+                    // Wait for fade-out transition to finish
+                    setTimeout(() => {
+                        loadingBar.style.display = 'none'; // Hide completely
+                        loadingBarProgress.style.width = '0%'; // Reset for next time
+                        // Now show the appropriate content section
+                        if (sectionToShowAfterLoad) {
+                            showSection(sectionToShowAfterLoad);
+                        }
+                    }, fadeOutAnimationDuration);
+                }, widthAnimationDuration);
             }
             else {
                 // Fallback if loading bar elements not found - show section immediately

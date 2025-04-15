@@ -314,6 +314,7 @@ html {
     font-size: 12px;
     font-weight: 500;
     transition: border-color .32s ease-in-out;
+    border-radius: 0px;
   }
   
   .inputbusca::placeholder {
