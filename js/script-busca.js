@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const semResultadoText = document.getElementById('semResultadoText'); // Selector for the text element
 
     let blurTimeout = null; // Timeout handle for blur event
-    let isClickingRecent = false; // Flag to track clicks on recent items
+    let currentFetchController = null; // Controller for the current fetch request
 
     // --- LocalStorage Constants ---
     const MAX_HISTORY = 10;
@@ -76,6 +76,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let sectionToShowAfterLoad = null;
         let timeoutOccurred = false; // Flag to track timeout
 
+        // Cancel any previous ongoing fetch
+        if (currentFetchController) {
+            console.log("Aborting previous fetch request.");
+            currentFetchController.abort();
+        }
+
+        // Create a new controller for the current fetch
+        const controller = new AbortController();
+        currentFetchController = controller; // Store it
+
         // Reset timeout message text
         if (semResultadoText) {
              semResultadoText.innerHTML = "Nenhum resultado encontrado.<br>Tente alterar as palavras e busque<br>novamente.";
@@ -100,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ query: query }),
+            signal: controller.signal // Pass the abort signal to fetch
         });
 
         // Create a timeout promise
@@ -132,22 +143,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 sectionToShowAfterLoad = 'contentSemResultado';
             }
         } catch (error) {
-            console.error("Erro na busca ou timeout:", error);
-            if (error.message === 'API Timeout') {
-                 console.log("API request timed out after 5 seconds.");
-                timeoutOccurred = true; // Set flag
-                if (semResultadoText) { // Update text for timeout
-                    semResultadoText.innerHTML = "A busca demorou mais do que o<br>esperado.Tente mudar os termos<br>ou buscar novamente.";
-                }
+            // Check if the error is due to aborting the request
+            if (error.name === 'AbortError') {
+                console.log("Fetch aborted by user action.");
+                // Don't set sectionToShowAfterLoad, let finally handle the loading bar
+                // And don't update the 'semResultadoText'
             } else {
-                // Handle other errors (network, parsing, etc.)
-                if (semResultadoText) { // Keep default error text for other errors
-                     semResultadoText.innerHTML = "Nenhum resultado encontrado.<br>Tente alterar as palavras e busque<br>novamente.";
+                // Handle actual errors (timeout, network, etc.)
+                console.error("Erro na busca ou timeout:", error);
+                if (error.message === 'API Timeout') {
+                     console.log("API request timed out after 5 seconds.");
+                    timeoutOccurred = true; // Set flag
+                    if (semResultadoText) { // Update text for timeout
+                        semResultadoText.innerHTML = "A busca demorou mais do que o<br>esperado. Tente mudar os termos<br>ou buscar novamente.";
+                    }
+                } else {
+                    // Handle other errors (network, parsing, etc.)
+                    if (semResultadoText) { // Keep default error text for other errors
+                         semResultadoText.innerHTML = "Nenhum resultado encontrado.<br>Tente alterar as palavras e busque<br>novamente.";
+                    }
                 }
+                 sectionToShowAfterLoad = 'contentSemResultado'; // Show 'no results' section for timeout/errors
             }
-             sectionToShowAfterLoad = 'contentSemResultado'; // Show 'no results' section for timeout/errors
         }
         finally {
+            // Clear the controller reference once fetch is complete or aborted
+            currentFetchController = null;
+
             // Handle loading bar hiding (logic remains the same)
             if (loadingBar && loadingBarProgress) {
                  const widthAnimationDuration = 800;
@@ -442,6 +464,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Clear input when clear button is clicked
         clearSearchBtn.addEventListener('click', function() {
+             // Abort any ongoing fetch request
+            if (currentFetchController) {
+                console.log("Clear button clicked: Aborting fetch request.");
+                currentFetchController.abort();
+            }
+
             inputBusca.value = '';
             clearIcon.classList.remove('visible');
             inputBusca.blur(); // Remove focus as requested
