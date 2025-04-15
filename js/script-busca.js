@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const campeonatoListagemContainer = document.getElementById('campeonatoListagemContainer'); // Container for dynamic results
     const templateBaseCampeonato = document.getElementById('template-basecampeonato');
     const templateEventoPreMatch = document.getElementById('template-eventoprematch');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn'); // Selector for clear button
 
     let blurTimeout = null; // Timeout handle for blur event
     let isClickingRecent = false; // Flag to track clicks on recent items
@@ -97,7 +98,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (Array.isArray(resultsArray) && resultsArray.length > 0) {
                 renderResults(resultsArray); // Pass the correct array
                 showSection('contentResultados');
-                // TODO: Implement addSearchTerm(query) here when a result is clicked/selected?
+                // Store the query that produced these results on the container
+                if (campeonatoListagemContainer) {
+                    campeonatoListagemContainer.dataset.currentQuery = query; 
+                }
             } else {
                 // Handle cases where API returns success but empty array or non-array data
                 console.log("API returned no results or unexpected format.");
@@ -192,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      const timeAElement = eventoDiv.querySelector('.txttime.timea');
                      const timeBElement = eventoDiv.querySelector('.txttime.timeb');
                      const dataElement = eventoDiv.querySelector('.txtdatapartida');
+                     const linkElement = eventoDiv.querySelector('.basepartidaprematch'); // Get the link element
 
                      if(timeAElement) timeAElement.textContent = match.home_team_name || 'Time A';
                      if(timeBElement) timeBElement.textContent = match.away_team_name || 'Time B';
@@ -201,6 +206,11 @@ document.addEventListener('DOMContentLoaded', function() {
                      if (mIndex === tournamentMatches.filter(m => m.status === 'not_started' && m.type === 'match').length - 1) {
                           eventoDiv.classList.add('ultimo');
                      }
+
+                    // Add click listener to save the search term
+                    if (linkElement) {
+                        linkElement.addEventListener('click', handleResultClick);
+                    }
 
                     console.log("    renderResults: Appending event node to baseCampeonatoDiv"); // Log 6a: Check event append
                     baseCampeonatoDiv.appendChild(eventoNode);
@@ -217,6 +227,25 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`renderResults: Appending tournament block ${tIndex + 1} to container`); // Log 6b: Check tournament append
             campeonatoListagemContainer.appendChild(campeonatoNode);
         });
+    }
+
+    // --- Event Handlers ---
+    function handleResultClick(event) {
+        event.preventDefault(); // Prevent link navigation
+        console.log("Result link clicked");
+
+        // Find the container and retrieve the original query
+        const container = document.getElementById('campeonatoListagemContainer');
+        const originalQuery = container?.dataset?.currentQuery;
+
+        if (originalQuery) {
+            console.log("Saving term to history:", originalQuery);
+            addSearchTerm(originalQuery);
+            // Future: Navigate to event details page or perform other action
+            alert(`Termo "${originalQuery}" salvo no histórico!\n(A navegação para o evento ainda não foi implementada)`);
+        } else {
+            console.warn("Could not retrieve original query from container dataset.");
+        }
     }
 
     // Helper function to show one content section and hide others
@@ -240,7 +269,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderSearchHistory() {
         const history = getSearchHistory();
+        if (!ultimasPesquisasLista) return; // Guard clause
         ultimasPesquisasLista.innerHTML = ''; // Clear previous items (removes static ones too)
+
+        // Show/hide clear button based on history existence
+        if(clearHistoryBtn) clearHistoryBtn.style.display = history.length > 0 ? 'flex' : 'none';
 
         if (history.length === 0) {
             if(nenhumaPesquisaInfo) nenhumaPesquisaInfo.style.display = 'block';
@@ -282,9 +315,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log("Pesquisar por (clique recente):", term);
                     // addSearchTerm(term); // Optionally add/move term when clicked from history
 
-                    hideUltimasPesquisas(); // Hide the list immediately after click
-                    // inputBusca.blur(); // Optionally remove focus
+                    // Hide the list immediately after click -> Changed: Hide ALL sections immediately
+                    // hideUltimasPesquisas(); 
+                    showSection(null); // Hide all sections, performSearch will show the correct one
+                    
+                    // Trigger search immediately (debounced)
+                    debouncedSearch(); 
 
+                    // inputBusca.blur(); // Optionally remove focus
                 });
 
                 ultimasPesquisasLista.appendChild(listItem);
@@ -426,5 +464,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     } else {
         console.error("Um ou mais elementos da busca não foram encontrados no DOM. Verifique os IDs em busca.html.");
+    }
+
+    // --- Event Listener for Clear History ---
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', () => {
+            console.log("Clearing search history");
+            try {
+                localStorage.removeItem(HISTORY_KEY);
+                renderSearchHistory(); // Re-render the (now empty) list
+                inputBusca.focus(); // Set focus back to search input
+            } catch (e) {
+                console.error("Erro ao limpar histórico de busca:", e);
+            }
+        });
     }
 });

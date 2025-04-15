@@ -392,6 +392,35 @@ html {
     line-height: 140%;
     transition: background-color .32s;
   }
+
+  .titleultimaspesquisas {
+    justify-content: space-between;
+    align-items: flex-start;
+    display: flex;
+  }
+  
+  .btnlimparhistorico {
+    grid-column-gap: 4px;
+    grid-row-gap: 4px;
+    align-items: center;
+    height: 20px;
+    display: flex;
+    cursor: pointer;
+    display: none;
+  }
+  
+  .txtlimparhistorico {
+    color: #000;
+    font-family: DM Sans, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 120%;
+  }
+  
+  .iconlimparhistorico {
+    width: 16px;
+    height: 16px;
+  }
   
   .basebuscadefault {
     border-bottom: 2px solid #f1f1f1;
@@ -512,8 +541,14 @@ html {
     width: 100%;
     height: 48px;
     text-decoration: none;
+    transition: background-color .32s ease-in-out;
     display: flex;
   }
+
+  .listaitemultimas:hover {
+    background-color: #fafafa;
+  }
+
   
   .listaitemultimas.ultima {
     border-bottom-style: none;
