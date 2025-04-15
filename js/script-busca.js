@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const templateBaseCampeonato = document.getElementById('template-basecampeonato');
     const templateEventoPreMatch = document.getElementById('template-eventoprematch');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn'); // Selector for clear button
+    const loadingBar = document.getElementById('loadingBar'); // Loading bar container
+    const loadingBarProgress = document.getElementById('loadingBarProgress'); // Loading bar inner progress
 
     let blurTimeout = null; // Timeout handle for blur event
     let isClickingRecent = false; // Flag to track clicks on recent items
@@ -70,13 +72,22 @@ document.addEventListener('DOMContentLoaded', function() {
     async function performSearch(query) {
         console.log("Performing search for:", query);
         showSection(null); // Hide all sections initially
+        let sectionToShowAfterLoad = null; // Variable to store which section to show
 
-        // Add loading indicator maybe?
-        // showSection('loadingIndicator'); // Assuming you have a loading indicator element
+        // Show and start loading bar animation
+        if (loadingBar && loadingBarProgress) {
+            loadingBar.style.opacity = '1'; // Ensure opacity is 1 before showing
+            loadingBar.style.display = 'block';
+            loadingBarProgress.style.width = '0%'; // Ensure it starts at 0
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                     loadingBarProgress.style.width = '100%';
+                });
+            });
+        }
 
         const apiUrl = `https://recomendo-python.staging.reidopitaco.io/search/betting`; // Base URL for POST
         try {
-            // Changed from GET to POST based on user feedback
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
@@ -84,37 +95,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ query: query }),
             });
-            // Simple check for ok status, might need more robust error handling (e.g., check content-type)
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data = await response.json(); // Assuming API returns JSON
+            const data = await response.json(); 
             console.log("API Response:", data);
 
-            // Assuming the data is an array of results as per your example -> Adjusted based on actual response
-            const resultsArray = data?.data?.results; // Access results inside data.data
-            console.log("Data to render:", resultsArray); // Log 1: Check data before passing
+            const resultsArray = data?.data?.results;
+            console.log("Data to render:", resultsArray);
 
             if (Array.isArray(resultsArray) && resultsArray.length > 0) {
-                renderResults(resultsArray); // Pass the correct array
-                showSection('contentResultados');
-                // Store the query that produced these results on the container
+                renderResults(resultsArray); // Prepare the results but don't show yet
+                sectionToShowAfterLoad = 'contentResultados'; // Mark section to show later
                 if (campeonatoListagemContainer) {
                     campeonatoListagemContainer.dataset.currentQuery = query; 
                 }
             } else {
-                // Handle cases where API returns success but empty array or non-array data
                 console.log("API returned no results or unexpected format.");
-                showSection('contentSemResultado');
+                sectionToShowAfterLoad = 'contentSemResultado'; // Mark section to show later
             }
         } catch (error) {
             console.error("Erro ao buscar na API:", error);
-            showSection('contentSemResultado'); // Show no results on API error too
+            sectionToShowAfterLoad = 'contentSemResultado'; // Mark section on error too
         }
-        // finally {
-        //     // Hide loading indicator if it was shown
-        //     hideSection('loadingIndicator');
-        // }
+        finally {
+             // Start hiding loading bar (fade-out)
+            if (loadingBar && loadingBarProgress) {
+                loadingBar.style.opacity = '0'; // Start fade-out
+                // Wait for fade-out transition to finish before hiding and showing content
+                setTimeout(() => {
+                    loadingBar.style.display = 'none'; // Hide completely
+                    loadingBarProgress.style.width = '0%'; // Reset for next time
+                    // Now show the appropriate content section
+                    if (sectionToShowAfterLoad) {
+                        showSection(sectionToShowAfterLoad);
+                    }
+                }, 300); // Must match the CSS opacity transition duration
+            }
+            else {
+                // Fallback if loading bar elements not found - show section immediately
+                 if (sectionToShowAfterLoad) {
+                        showSection(sectionToShowAfterLoad);
+                 }
+            }
+        }
     }
 
     // --- UI Functions ---

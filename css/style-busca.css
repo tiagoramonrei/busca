@@ -863,7 +863,7 @@ html {
     display: flex;
   }
   
-  .escudotimea {
+  .escudotime {
     width: 16px;
     height: 16px;
   }
@@ -875,6 +875,7 @@ html {
     font-size: 12px;
     font-weight: 700;
     line-height: 120%;
+    transition: color .32s ease-in-out;
   }
   
   .placar {
@@ -1177,6 +1178,33 @@ html {
       padding-right: 20px;
     }
   }
+  
+  /* Change team name color on hover */
+  .basepartidaprematch:hover .txttime {
+    color: #32A866;
+  }
+  
+  /* Loading Bar Styles */
+  #loadingBar {
+    width: 100%;
+    height: 4px;
+    background-color: #f1f1f1; /* Optional: background track color */
+    overflow: hidden;
+    position: absolute; /* Position relative to nearest positioned ancestor */
+    top: 140px; /* Height of header (80px) + subheader (60px) */
+    z-index: 9990; /* Below header/subheader but above most content */
+    display: none; /* Hidden by default */
+    opacity: 1; /* Start fully opaque when shown */
+    transition: opacity 0.3s ease-in-out; /* Add transition for fade-out */
+  }
+  
+  #loadingBarProgress {
+    width: 0%; /* Start at 0 */
+    height: 100%;
+    background-color: #3A7B4B;
+    transition: width 0.8s ease-in-out; /* Adjust duration/timing as needed */
+  }
+  /* End Loading Bar Styles */
   
   
   
